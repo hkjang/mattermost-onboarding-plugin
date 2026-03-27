@@ -1,5 +1,8 @@
 bin/
 dist/
+.gocache/
+.gopath/
+.tools/
 webapp/src/manifest.ts
 server/manifest.go
 
