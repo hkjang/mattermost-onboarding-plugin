@@ -1,26 +1,118 @@
 {
-    "id": "com.mattermost.plugin-starter-template",
-    "name": "Plugin Starter Template",
-    "description": "This plugin serves as a starting point for writing a Mattermost plugin.",
-    "homepage_url": "https://github.com/mattermost/mattermost-plugin-starter-template",
-    "support_url": "https://github.com/mattermost/mattermost-plugin-starter-template/issues",
-    "icon_path": "assets/starter-template-icon.svg",
-    "min_server_version": "6.2.1",
-    "server": {
-        "executables": {
-            "linux-amd64": "server/dist/plugin-linux-amd64",
-            "linux-arm64": "server/dist/plugin-linux-arm64",
-            "darwin-amd64": "server/dist/plugin-darwin-amd64",
-            "darwin-arm64": "server/dist/plugin-darwin-arm64",
-            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
-        }
-    },
-    "webapp": {
-        "bundle_path": "webapp/dist/main.js"
-    },
-    "settings_schema": {
-        "header": "",
-        "footer": "",
-        "settings": []
+  "id": "com.kcb.mattermost-onboarding-plugin",
+  "name": "Mattermost Onboarding Plugin",
+  "description": "Automatically sends onboarding guidance to newly created Mattermost users.",
+  "icon_path": "assets/starter-template-icon.svg",
+  "min_server_version": "6.2.1",
+  "server": {
+    "executables": {
+      "linux-amd64": "server/dist/plugin-linux-amd64",
+      "linux-arm64": "server/dist/plugin-linux-arm64",
+      "darwin-amd64": "server/dist/plugin-darwin-amd64",
+      "darwin-arm64": "server/dist/plugin-darwin-arm64",
+      "windows-amd64": "server/dist/plugin-windows-amd64.exe"
     }
+  },
+  "webapp": {
+    "bundle_path": "webapp/dist/main.js"
+  },
+  "settings_schema": {
+    "header": "Configure onboarding templates, links, exclusions, and delivery behavior.",
+    "footer": "Changes are applied to newly created users immediately after saving.",
+    "settings": [
+      {
+        "key": "OperationsPanelPlaceholder",
+        "display_name": "Operations Panel",
+        "type": "text",
+        "help_text": "Rendered as a custom admin console operations panel."
+      },
+      {
+        "key": "EnableAutoSend",
+        "display_name": "Enable auto send",
+        "type": "bool",
+        "help_text": "Start onboarding delivery when UserHasBeenCreated fires.",
+        "default": "true"
+      },
+      {
+        "key": "SenderBotUsername",
+        "display_name": "Sender bot username",
+        "type": "text",
+        "help_text": "Bot username used to send onboarding DMs.",
+        "placeholder": "onboarding.bot",
+        "default": "onboarding.bot"
+      },
+      {
+        "key": "SenderBotDisplayName",
+        "display_name": "Sender bot display name",
+        "type": "text",
+        "help_text": "Visible sender name for onboarding direct messages.",
+        "placeholder": "Onboarding Bot",
+        "default": "Onboarding Bot"
+      },
+      {
+        "key": "DefaultLanguage",
+        "display_name": "Default language",
+        "type": "text",
+        "help_text": "Language used when a user-specific template match is not found.",
+        "placeholder": "ko",
+        "default": "ko"
+      },
+      {
+        "key": "FallbackDepartmentCode",
+        "display_name": "Fallback department code",
+        "type": "text",
+        "help_text": "Department template code used when no mapping is found.",
+        "placeholder": "DEFAULT",
+        "default": "DEFAULT"
+      },
+      {
+        "key": "InitialDelaySeconds",
+        "display_name": "Initial delay seconds",
+        "type": "number",
+        "help_text": "Queue a delayed send when user attributes may not be ready immediately.",
+        "placeholder": "0",
+        "default": "0"
+      },
+      {
+        "key": "RetryIntervalMinutes",
+        "display_name": "Retry interval minutes",
+        "type": "number",
+        "help_text": "Minutes between retry attempts for failed automatic sends.",
+        "placeholder": "5",
+        "default": "5"
+      },
+      {
+        "key": "RetryMaxAttempts",
+        "display_name": "Retry max attempts",
+        "type": "number",
+        "help_text": "Maximum retry attempts for failed automatic sends.",
+        "placeholder": "3",
+        "default": "3"
+      },
+      {
+        "key": "TemplatesJSON",
+        "display_name": "Templates JSON",
+        "type": "longtext",
+        "help_text": "Array of templates using template_id, template_type, dept_code, lang, title, body, active_yn, and version."
+      },
+      {
+        "key": "LinksJSON",
+        "display_name": "Links JSON",
+        "type": "longtext",
+        "help_text": "Array of links using link_id, template_id, link_title, link_desc, link_url, sort_order, and active_yn."
+      },
+      {
+        "key": "DepartmentMappingsJSON",
+        "display_name": "Department mappings JSON",
+        "type": "longtext",
+        "help_text": "Array of mappings using source_dept_code, source_dept_name, template_dept_code, template_dept_name, organization_name, and active_yn."
+      },
+      {
+        "key": "ExclusionRulesJSON",
+        "display_name": "Exclusion rules JSON",
+        "type": "longtext",
+        "help_text": "Array of rules using email_domain, username, user_id, group_name, group_id, is_bot, or deleted rule types."
+      }
+    ]
+  }
 }

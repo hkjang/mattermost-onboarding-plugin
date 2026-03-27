@@ -1,13 +1,48 @@
-# Plugin Starter Template
+# Mattermost Onboarding Plugin
 
 [![Build Status](https://github.com/mattermost/mattermost-plugin-starter-template/actions/workflows/ci.yml/badge.svg)](https://github.com/mattermost/mattermost-plugin-starter-template/actions/workflows/ci.yml)
 [![E2E Status](https://github.com/mattermost/mattermost-plugin-starter-template/actions/workflows/e2e.yml/badge.svg)](https://github.com/mattermost/mattermost-plugin-starter-template/actions/workflows/e2e.yml)
 
-This plugin serves as a starting point for writing a Mattermost plugin. Feel free to base your own plugin off this repository.
+This repository now contains a Mattermost onboarding plugin foundation that automatically sends a direct message to newly created users. The current implementation focuses on an operator-configurable first release that combines common guidance with department-specific guidance, applies exclusion rules, records send logs, and retries failures through a queue.
 
 To learn more about plugins, see [our plugin documentation](https://developers.mattermost.com/extend/plugins/).
 
 This template requires node v16 and npm v8. You can download and install nvm to manage your node versions by following the instructions [here](https://github.com/nvm-sh/nvm). Once you've setup the project simply run `nvm i` within the root folder to use the suggested version of node.
+
+## Current Foundation
+
+The server implementation currently supports the following:
+
+- `UserHasBeenCreated` hook based automatic onboarding start
+- Common template + department template composition
+- Template variable replacement such as `{{user_name}}`, `{{department_name}}`, `{{start_date}}`
+- Link ordering and per-link activation control
+- Fallback to common-only or fallback department template
+- Exclusion rules for email domain, username, user id, group, bot, and deleted users
+- KV-backed send logs and duplicate prevention for automatic sends
+- Retry queue processing through the background job
+- System Console settings schema for runtime template and mapping changes`r`n- System Console operations panel for preview, resend, stats, and recent log checks
+- Admin API endpoints for preview, resend, stats, and log lookup
+
+## Admin API
+
+All admin endpoints are under `/plugins/<plugin-id>/api/v1/admin` and require a logged-in system admin.
+
+- `GET /health`
+- `GET /admin/preview?user_id=<id>`
+- `POST /admin/resend`
+- `GET /admin/stats`
+- `GET /admin/logs`
+
+`POST /admin/resend` expects JSON such as:
+
+```json
+{
+  "user_id": "target-user-id"
+}
+```
+
+Preview also supports optional overrides for `dept_code`, `dept_name`, `organization_name`, `lang`, and `start_date`.
 
 ## Getting Started
 Use GitHub's template feature to make a copy of this repository by clicking the "Use this template" button.
@@ -79,21 +114,29 @@ To avoid having to manually install your plugin, build and deploy your plugin us
 
 4. New package for upstream integration: a discrete client package for interfacing with a 3rd party is often a great place to break out into a new package
 
-### Modifying the server boilerplate
+### Server Components
 
-The server code comes with some boilerplate for creating an api, using slash commands, accessing the kvstore and using the cluster package for jobs.
+The server side is centered on the following plugin layers:
 
-#### Api
+#### Event Listener
 
-api.go implements the ServeHTTP hook which allows the plugin to implement the http.Handler interface. Requests destined for the `/plugins/{id}` path will be routed to the plugin. This file also contains a sample `HelloWorld` endpoint that is tested in plugin_test.go.
+`UserHasBeenCreated` starts onboarding delivery immediately or after an optional delay.
 
-#### Command package
+#### Template Resolver and Renderer
 
-This package contains the boilerplate for adding a slash command and an instance of it is created in the `OnActivate` hook in plugin.go. If you don't need it you can delete the package and remove any reference to `commandClient` in plugin.go. The package also contains an example of how to create a mock for testing.
+The onboarding service resolves a common template and an optional department template by language and department mapping, then renders a Markdown DM with ordered links.
 
-#### KVStore package
+#### Delivery Control
 
-This is a central place for you to access the KVStore methods that are available in the `pluginapi.Client`. The package contains an interface for you to define your methods that will wrap the KVStore methods. An instance of the KVStore is created in the `OnActivate` hook.
+Automatic sends are protected by a KV-backed atomic state key so duplicate creation events do not generate multiple DMs.
+
+#### Retry Queue
+
+Failures are stored in a KV-backed retry queue and retried by the scheduled background job.
+
+#### Admin APIs
+
+Preview, manual resend, stats, and latest-log lookup are exposed through authenticated plugin HTTP endpoints for future admin UI integration.
 
 ### Deploying with Local Mode
 

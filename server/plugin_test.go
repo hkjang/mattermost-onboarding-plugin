@@ -14,7 +14,7 @@ func TestServeHTTP(t *testing.T) {
 	plugin := Plugin{}
 	plugin.router = plugin.initRouter()
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/api/v1/hello", nil)
+	r := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
 	r.Header.Set("Mattermost-User-ID", "test-user-id")
 
 	plugin.ServeHTTP(nil, w, r)
@@ -26,5 +26,5 @@ func TestServeHTTP(t *testing.T) {
 	assert.Nil(err)
 	bodyString := string(bodyBytes)
 
-	assert.Equal("Hello, world!", bodyString)
+	assert.Equal("ok", bodyString)
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"sync"
 	"time"
 
@@ -11,28 +10,21 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 	"github.com/pkg/errors"
-
-	"github.com/mattermost/mattermost-plugin-starter-template/server/command"
-	"github.com/mattermost/mattermost-plugin-starter-template/server/store/kvstore"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
 type Plugin struct {
 	plugin.MattermostPlugin
 
-	// kvstore is the client used to read/write KV records for this plugin.
-	kvstore kvstore.KVStore
-
 	// client is the Mattermost server API client.
 	client *pluginapi.Client
-
-	// commandClient is the client used to register and execute slash commands.
-	commandClient command.Command
 
 	// router is the HTTP router for handling API requests.
 	router *mux.Router
 
 	backgroundJob *cluster.Job
+	botUserID     string
+	botLock       sync.RWMutex
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -45,17 +37,16 @@ type Plugin struct {
 // OnActivate is invoked when the plugin is activated. If an error is returned, the plugin will be deactivated.
 func (p *Plugin) OnActivate() error {
 	p.client = pluginapi.NewClient(p.API, p.Driver)
-
-	p.kvstore = kvstore.NewKVStore(p.client)
-
-	p.commandClient = command.NewCommandHandler(p.client)
-
 	p.router = p.initRouter()
+
+	if err := p.OnConfigurationChange(); err != nil {
+		return err
+	}
 
 	job, err := cluster.Schedule(
 		p.API,
-		"BackgroundJob",
-		cluster.MakeWaitForRoundedInterval(1*time.Hour),
+		"OnboardingRetryJob",
+		cluster.MakeWaitForRoundedInterval(1*time.Minute),
 		p.runJob,
 	)
 	if err != nil {
@@ -77,13 +68,29 @@ func (p *Plugin) OnDeactivate() error {
 	return nil
 }
 
-// This will execute the commands that were registered in the NewCommandHandler function.
-func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	response, err := p.commandClient.Handle(args)
+// See https://developers.mattermost.com/extend/plugins/server/reference/
+
+func (p *Plugin) ensureSenderBot() error {
+	config := p.getRuntimeConfiguration()
+
+	botUserID, err := p.client.Bot.EnsureBot(&model.Bot{
+		Username:    config.SenderBotUsername,
+		DisplayName: config.SenderBotDisplayName,
+		Description: "Automatically sends onboarding guidance to newly created users.",
+	})
 	if err != nil {
-		return nil, model.NewAppError("ExecuteCommand", "plugin.command.execute_command.app_error", nil, err.Error(), http.StatusInternalServerError)
+		return errors.Wrap(err, "failed to ensure sender bot")
 	}
-	return response, nil
+
+	p.botLock.Lock()
+	defer p.botLock.Unlock()
+	p.botUserID = botUserID
+
+	return nil
 }
 
-// See https://developers.mattermost.com/extend/plugins/server/reference/
+func (p *Plugin) getBotUserID() string {
+	p.botLock.RLock()
+	defer p.botLock.RUnlock()
+	return p.botUserID
+}

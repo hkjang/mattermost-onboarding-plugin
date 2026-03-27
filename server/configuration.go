@@ -17,7 +17,22 @@ import (
 //
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
-type configuration struct{}
+type configuration struct {
+	EnableAutoSend         bool   `json:"EnableAutoSend"`
+	SenderBotUsername      string `json:"SenderBotUsername"`
+	SenderBotDisplayName   string `json:"SenderBotDisplayName"`
+	DefaultLanguage        string `json:"DefaultLanguage"`
+	FallbackDepartmentCode string `json:"FallbackDepartmentCode"`
+	InitialDelaySeconds    int    `json:"InitialDelaySeconds"`
+	RetryIntervalMinutes   int    `json:"RetryIntervalMinutes"`
+	RetryMaxAttempts       int    `json:"RetryMaxAttempts"`
+	TemplatesJSON          string `json:"TemplatesJSON"`
+	LinksJSON              string `json:"LinksJSON"`
+	DepartmentMappingsJSON string `json:"DepartmentMappingsJSON"`
+	ExclusionRulesJSON     string `json:"ExclusionRulesJSON"`
+
+	runtime *runtimeConfiguration `json:"-"`
+}
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
 // your configuration has reference types.
@@ -76,7 +91,19 @@ func (p *Plugin) OnConfigurationChange() error {
 		return errors.Wrap(err, "failed to load plugin configuration")
 	}
 
+	runtime, err := buildRuntimeConfiguration(configuration)
+	if err != nil {
+		return errors.Wrap(err, "failed to validate plugin configuration")
+	}
+	configuration.runtime = runtime
+
 	p.setConfiguration(configuration)
+
+	if p.client != nil {
+		if err := p.ensureSenderBot(); err != nil {
+			return errors.Wrap(err, "failed to initialize onboarding sender bot")
+		}
+	}
 
 	return nil
 }
